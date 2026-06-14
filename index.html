@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Chaser WIP Management</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+</style>
+</head>
+<body class="bg-slate-100 text-slate-800">
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react">
+const { useState, useMemo, useRef } = React;
+
+// ---------- Icons (inline SVG, Feather-style) ----------
+const ICON_PATHS = {
+  "dashboard": '<rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/>',
+  "file-text": '<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/>',
+  "flag": '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/>',
+  "bell": '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>',
+  "phone": '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>',
+  "bar-chart": '<path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>',
+  "building": '<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/>',
+  "truck": '<path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/>',
+  "settings": '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
+  "search": '<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',
+  "help-circle": '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 1 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12" y2="17.01"/>',
+  "upload": '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>',
+  "check-circle": '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
+  "alert-circle": '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>',
+  "chevron-left": '<polyline points="15 18 9 12 15 6"/>',
+  "chevron-right": '<polyline points="9 18 15 12 9 6"/>',
+  "x": '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+};
+function Icon({ name, size = 16, className = "" }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+      fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      className={className} dangerouslySetInnerHTML={{ __html: ICON_PATHS[name] || "" }} />
+  );
+}
+
+// ---------- Config ----------
+const STATUS_META = {
+  "Chase Today": { color: "#dc2626", bg: "bg-rose-50", text: "text-rose-600" },
+  "Requested Chaser": { color: "#16a34a", bg: "bg-emerald-50", text: "text-emerald-600" },
+  "No Chaser Requested": { color: "#ea580c", bg: "bg-orange-50", text: "text-orange-600" },
+  "Chase Not Required": { color: "#7c3aed", bg: "bg-violet-50", text: "text-violet-600" },
+};
+const STATUSES = Object.keys(STATUS_META);
+
+const PAGES = [
+  "Dashboard", "Chaser WIP (All)", "Chase Today", "Overdue Follow Ups",
+  "Supplier Chases", "Chaser Performance", "Customer WIPs", "Supplier Management", "Settings",
+];
+const NAV_ICONS = {
+  "Dashboard": "dashboard", "Chaser WIP (All)": "file-text", "Chase Today": "flag",
+  "Overdue Follow Ups": "bell", "Supplier Chases": "phone", "Chaser Performance": "bar-chart",
+  "Customer WIPs": "building", "Supplier Management": "truck", "Settings": "settings",
+};
+
+// ---------- Sample data (mirrors a tblChaser export) ----------
+const SUPPLIERS = [
+  "ABC Components Ltd", "XYZ Manufacturing", "Precision Parts Co",
+  "Global Supplies Ltd", "Tech Components", "Advanced Engineering",
+  "Superior Parts Ltd", "Industrial Solutions", "Euro Components", "Fasteners UK",
+];
+const CUSTOMERS = ["Leonardo UK", "Airbus", "Safran", "BAE Systems"];
+const CX_LEADS = ["Jess W.", "Giedre S.", "Gabby G.", "Meena R.", "Yas D."];
+const SOURCE_QUERIES = ["Supplier Email", "Customer Portal", "Phone Log", "SF Case", "Manual Entry"];
+const NEXT_ACTIONS = {
+  "Chase Today": ["Phone call", "Email chase"],
+  "Requested Chaser": ["Email chase", "Awaiting supplier reply"],
+  "No Chaser Requested": ["Awaiting customer"],
+  "Chase Not Required": ["On hold", "Closed"],
+};
+
+function seededRandom(seed) {
+  let s = seed;
+  return () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
+}
+const TODAY = new Date(2024, 4, 20);
+
+function addDays(d, n) { return new Date(d.getTime() + n * 86400000); }
+function fmtDate(d) {
+  if (!d) return "—";
+  const dt = d instanceof Date ? d : new Date(d);
+  if (isNaN(dt)) return "—";
+  return `${String(dt.getDate()).padStart(2, "0")}/${String(dt.getMonth() + 1).padStart(2, "0")}/${dt.getFullYear()}`;
+}
+function daysBetween(a, b) { return Math.round((a.getTime() - b.getTime()) / 86400000); }
+
+function generateSampleData() {
+  const rand = seededRandom(42);
+  const rows = [];
+  for (let i = 0; i < 250; i++) {
+    const r = rand() * 250;
+    let status;
+    if (r < 142) status = "Chase Today";
+    else if (r < 210) status = "Requested Chaser";
+    else if (r < 233) status = "No Chaser Requested";
+    else status = "Chase Not Required";
+
+    const followOffset = Math.floor(rand() * 14) - 5;
+    const etaOffset = followOffset + Math.floor(rand() * 5) + 1;
+    const lastChasedOffset = -Math.floor(rand() * 11);
+    const actions = NEXT_ACTIONS[status];
+
+    rows.push({
+      id: i,
+      workOrder: `WO${123456 + i}`,
+      supplier: SUPPLIERS[Math.floor(rand() * SUPPLIERS.length)],
+      customer: CUSTOMERS[Math.floor(rand() * CUSTOMERS.length)],
+      cxLead: CX_LEADS[Math.floor(rand() * CX_LEADS.length)],
+      status,
+      chaseToday: status === "Chase Today" || status === "Requested Chaser",
+      nextAction: actions[Math.floor(rand() * actions.length)],
+      followUpDate: status === "Chase Not Required" ? null : addDays(TODAY, followOffset),
+      eta: status === "Chase Not Required" ? null : addDays(TODAY, etaOffset),
+      rfqRaised: rand() > 0.5,
+      purRaised: rand() > 0.5,
+      shipToSupplier: rand() > 0.5,
+      sourceQuery: SOURCE_QUERIES[Math.floor(rand() * SOURCE_QUERIES.length)],
+      lastChased: addDays(TODAY, lastChasedOffset),
+      bookedOut: rand() > 0.85,
+    });
+  }
+  return rows;
+}
+
+// ---------- Upload mapping ----------
+const HEADER_MAP = {
+  "work order": "workOrder", "wo": "workOrder",
+  supplier: "supplier", customer: "customer",
+  "cx lead": "cxLead", "customer owner": "cxLead", "cx owner": "cxLead",
+  "chaser status": "status", "status": "status",
+  "chase today": "chaseToday",
+  "next action": "nextAction",
+  "follow up date": "followUpDate", "follow up": "followUpDate",
+  eta: "eta",
+  "rfq raised": "rfqRaised", "pur raised": "purRaised",
+  "ship to supplier": "shipToSupplier", "source query": "sourceQuery",
+  "last chased": "lastChased", "booked out": "bookedOut",
+};
+function toBool(v) {
+  if (typeof v === "boolean") return v;
+  if (v == null) return false;
+  const s = String(v).trim().toLowerCase();
+  return s === "yes" || s === "true" || s === "1" || s === "y";
+}
+function toDate(v) {
+  if (!v) return null;
+  if (v instanceof Date) return v;
+  if (typeof v === "number") return new Date(Date.UTC(1899, 11, 30) + v * 86400000);
+  const d = new Date(v);
+  return isNaN(d) ? null : d;
+}
+function normalizeStatus(s) {
+  if (!s) return "Chase Not Required";
+  const found = STATUSES.find(st => st.toLowerCase() === String(s).trim().toLowerCase());
+  return found || s;
+}
+function parseSheetRows(json) {
+  return json.map((row, i) => {
+    const mapped = {};
+    Object.entries(row).forEach(([key, val]) => {
+      const norm = HEADER_MAP[key.trim().toLowerCase()];
+      if (norm) mapped[norm] = val;
+    });
+    return {
+      id: i,
+      workOrder: mapped.workOrder ? String(mapped.workOrder) : `Row ${i + 1}`,
+      supplier: mapped.supplier || "Unknown",
+      customer: mapped.customer || "Unknown",
+      cxLead: mapped.cxLead || "Unassigned",
+      status: normalizeStatus(mapped.status),
+      chaseToday: toBool(mapped.chaseToday),
+      nextAction: mapped.nextAction || "—",
+      followUpDate: toDate(mapped.followUpDate),
+      eta: toDate(mapped.eta),
+      rfqRaised: toBool(mapped.rfqRaised),
+      purRaised: toBool(mapped.purRaised),
+      shipToSupplier: toBool(mapped.shipToSupplier),
+      sourceQuery: mapped.sourceQuery || "—",
+      lastChased: toDate(mapped.lastChased),
+      bookedOut: toBool(mapped.bookedOut),
+    };
+  });
+}
+
+// ---------- Charts (pure CSS/SVG, no chart library) ----------
+function DonutChart({ data, total, onSliceClick }) {
+  const r = 80, c = 2 * Math.PI * r, cx = 110, cy = 110;
+  let offset = 0;
+  return (
+    <div className="relative w-full h-56 flex items-center justify-center">
+      <svg viewBox="0 0 220 220" className="w-56 h-56 -rotate-90">
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke="#e2e8f0" strokeWidth="24" />
+        {data.map((d, i) => {
+          const frac = total ? d.value / total : 0;
+          const dash = frac * c;
+          const el = (
+            <circle key={i} cx={cx} cy={cy} r={r} fill="none" stroke={d.color} strokeWidth="24"
+              strokeDasharray={`${dash} ${c - dash}`} strokeDashoffset={-offset}
+              style={{ cursor: onSliceClick ? "pointer" : "default" }}
+              onClick={() => onSliceClick && onSliceClick(d.name)} />
+          );
+          offset += dash;
+          return el;
+        })}
+      </svg>
+      <div className="absolute flex flex-col items-center pointer-events-none">
+        <span className="text-xs text-slate-400">Total</span>
+        <span className="text-2xl font-bold text-slate-800">{total}</span>
+      </div>
+    </div>
+  );
+}
+function HBarChart({ data, color }) {
+  const max = Math.max(1, ...data.map(d => d.count));
+  return (
+    <div className="space-y-2">
+      {data.map(d => (
+        <div key={d.name} className="flex items-center gap-2 text-xs">
+          <span className="w-24 truncate text-slate-600">{d.name}</span>
+          <div className="flex-1 h-3 bg-slate-100 rounded-full overflow-hidden">
+            <div className="h-full rounded-full" style={{ width: `${(d.count / max) * 100}%`, background: color }} />
+          </div>
+          <span className="w-8 text-right font-medium text-slate-700">{d.count}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+function BarStat({ label, value, max, color }) {
+  const pct = max ? Math.round((value / max) * 100) : 0;
+  return (
+    <div className="text-xs">
+      <div className="flex justify-between mb-1"><span className="text-slate-600">{label}</span><span className="font-semibold text-slate-700">{value}</span></div>
+      <div className="h-2 bg-slate-100 rounded-full overflow-hidden"><div className="h-full rounded-full" style={{ width: `${pct}%`, background: color }} /></div>
+    </div>
+  );
+}
+
+// ---------- Small shared components ----------
+function StatusBadge({ status, chaseToday }) {
+  const meta = STATUS_META[status] || STATUS_META["Chase Not Required"];
+  return (
+    <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-full ${meta.bg} ${meta.text}`}>
+      {chaseToday && <Icon name="flag" size={11} />}
+      {status}
+    </span>
+  );
+}
+function StatusSelect({ row, onChange }) {
+  const meta = STATUS_META[row.status] || STATUS_META["Chase Not Required"];
+  return (
+    <select value={row.status} onChange={e => onChange(row.id, e.target.value)}
+      className={`text-xs font-medium rounded-full px-2 py-1 border-0 cursor-pointer ${meta.bg} ${meta.text}`}>
+      {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+    </select>
+  );
+}
+function FlagsCell({ row }) {
+  return (
+    <div className="flex gap-1">
+      {row.rfqRaised && <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 font-medium">RFQ</span>}
+      {row.purRaised && <span className="text-[10px] px-1.5 py-0.5 rounded bg-teal-50 text-teal-600 font-medium">PUR</span>}
+      {row.shipToSupplier && <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 font-medium">SHIP</span>}
+      {row.bookedOut && <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 font-medium">BOOKED</span>}
+    </div>
+  );
+}
+
+function PaginatedTable({ rows, today, onStatusChange, defaultPerPage = 10, emptyText = "No work orders match these filters." }) {
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(defaultPerPage);
+  const totalPages = Math.max(1, Math.ceil(rows.length / perPage));
+  const safePage = Math.min(page, totalPages);
+  const pageRows = rows.slice((safePage - 1) * perPage, safePage * perPage);
+
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left text-xs text-slate-500 border-b border-slate-200">
+              <th className="px-3 py-2">Work Order</th>
+              <th className="px-2 py-2">Supplier</th>
+              <th className="px-2 py-2">Customer</th>
+              <th className="px-2 py-2">CX Lead</th>
+              <th className="px-2 py-2">Status</th>
+              <th className="px-2 py-2">Next Action</th>
+              <th className="px-2 py-2">Follow Up</th>
+              <th className="px-2 py-2">ETA</th>
+              <th className="px-2 py-2">Flags</th>
+            </tr>
+          </thead>
+          <tbody>
+            {pageRows.map(r => {
+              const overdue = r.followUpDate && r.followUpDate < today;
+              return (
+                <tr key={r.id} className="border-b border-slate-100 hover:bg-slate-50">
+                  <td className="px-3 py-2 font-medium text-slate-700 whitespace-nowrap">{r.workOrder}</td>
+                  <td className="px-2 py-2 text-slate-600 whitespace-nowrap">{r.supplier}</td>
+                  <td className="px-2 py-2 text-slate-600 whitespace-nowrap">{r.customer}</td>
+                  <td className="px-2 py-2 text-slate-500 whitespace-nowrap">{r.cxLead}</td>
+                  <td className="px-2 py-2">
+                    {onStatusChange ? <StatusSelect row={r} onChange={onStatusChange} /> : <StatusBadge status={r.status} chaseToday={r.chaseToday} />}
+                  </td>
+                  <td className="px-2 py-2 text-slate-500 whitespace-nowrap">{r.nextAction}</td>
+                  <td className={`px-2 py-2 whitespace-nowrap font-medium ${overdue ? "text-rose-600" : "text-slate-600"}`}>{fmtDate(r.followUpDate)}</td>
+                  <td className="px-2 py-2 text-slate-500 whitespace-nowrap">{fmtDate(r.eta)}</td>
+                  <td className="px-2 py-2 whitespace-nowrap"><FlagsCell row={r} /></td>
+                </tr>
+              );
+            })}
+            {pageRows.length === 0 && (
+              <tr><td colSpan={9} className="text-center py-8 text-slate-400 text-sm">{emptyText}</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+      <div className="flex items-center justify-between p-3 border-t border-slate-200 text-xs text-slate-500">
+        <span>{rows.length === 0 ? "0" : `${(safePage - 1) * perPage + 1}–${Math.min(safePage * perPage, rows.length)}`} of {rows.length}</span>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={safePage === 1} className="p-1.5 rounded border border-slate-200 disabled:opacity-40"><Icon name="chevron-left" size={14} /></button>
+          <span>Page {safePage} / {totalPages}</span>
+          <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={safePage === totalPages} className="p-1.5 rounded border border-slate-200 disabled:opacity-40"><Icon name="chevron-right" size={14} /></button>
+          <select value={perPage} onChange={e => { setPerPage(Number(e.target.value)); setPage(1); }} className="border border-slate-200 rounded px-1.5 py-1 ml-1">
+            {[10, 25, 50].map(n => <option key={n} value={n}>{n} / page</option>)}
+          </select>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EditableWipTable({ rows, today, onStatusChange, defaultPerPage = 10, emptyText = "No work orders for this customer." }) {
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(defaultPerPage);
+  const totalPages = Math.max(1, Math.ceil(rows.length / perPage));
+  const safePage = Math.min(page, totalPages);
+  const pageRows = rows.slice((safePage - 1) * perPage, safePage * perPage);
+
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left text-xs text-slate-500 border-b border-slate-200">
+              <th className="px-3 py-2">Work Order</th>
+              <th className="px-2 py-2">Supplier</th>
+              <th className="px-2 py-2">CX Lead</th>
+              <th className="px-2 py-2">Status</th>
+              <th className="px-2 py-2">Next Action</th>
+              <th className="px-2 py-2">Follow Up</th>
+              <th className="px-2 py-2">ETA</th>
+            </tr>
+          </thead>
+          <tbody>
+            {pageRows.map(r => {
+              const overdue = r.followUpDate && r.followUpDate < today;
+              return (
+                <tr key={r.id} className="border-b border-slate-100 hover:bg-slate-50">
+                  <td className="px-3 py-2 font-medium text-slate-700 whitespace-nowrap">{r.workOrder}</td>
+                  <td className="px-2 py-2 text-slate-600 whitespace-nowrap">{r.supplier}</td>
+                  <td className="px-2 py-2 text-slate-500 whitespace-nowrap">{r.cxLead}</td>
+                  <td className="px-2 py-2"><StatusSelect row={r} onChange={onStatusChange} /></td>
+                  <td className="px-2 py-2 text-slate-500 whitespace-nowrap">{r.nextAction}</td>
+                  <td className={`px-2 py-2 whitespace-nowrap font-medium ${overdue ? "text-rose-600" : "text-slate-600"}`}>{fmtDate(r.followUpDate)}</td>
+                  <td className="px-2 py-2 text-slate-500 whitespace-nowrap">{fmtDate(r.eta)}</td>
+                </tr>
+              );
+            })}
+            {pageRows.length === 0 && (
+              <tr><td colSpan={7} className="text-center py-8 text-slate-400 text-sm">{emptyText}</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+      <div className="flex items-center justify-between p-3 border-t border-slate-200 text-xs text-slate-500">
+        <span>{rows.length === 0 ? "0" : `${(safePage - 1) * perPage + 1}–${Math.min(safePage * perPage, rows.length)}`} of {rows.length}</span>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={safePage === 1} className="p-1.5 rounded border border-slate-200 disabled:opacity-40"><Icon name="chevron-left" size={14} /></button>
+          <span>Page {safePage} / {totalPages}</span>
+          <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={safePage === totalPages} className="p-1.5 rounded border border-slate-200 disabled:opacity-40"><Icon name="chevron-right" size={14} /></button>
+          <select value={perPage} onChange={e => { setPerPage(Number(e.target.value)); setPage(1); }} className="border border-slate-200 rounded px-1.5 py-1 ml-1">
+            {[10, 25, 50].map(n => <option key={n} value={n}>{n} / page</option>)}
+          </select>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FilterBar({ search, setSearch, statusFilter, setStatusFilter, supplierFilter, setSupplierFilter,
+  customerFilter, setCustomerFilter, cxLeadFilter, setCxLeadFilter, suppliers, customers, cxLeads, onClear, showClear }) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      <input
+        value={search}
+        onChange={e => setSearch(e.target.value)}
+        placeholder="Search work order, supplier, customer..."
+        className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-slate-50 flex-1 min-w-[160px]"
+      />
+      <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-slate-50">
+        <option>All</option>
+        {STATUSES.map(s => <option key={s}>{s}</option>)}
+      </select>
+      <select value={supplierFilter} onChange={e => setSupplierFilter(e.target.value)} className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-slate-50">
+        <option>All</option>
+        {suppliers.map(s => <option key={s}>{s}</option>)}
+      </select>
+      <select value={customerFilter} onChange={e => setCustomerFilter(e.target.value)} className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-slate-50">
+        <option>All</option>
+        {customers.map(c => <option key={c}>{c}</option>)}
+      </select>
+      <select value={cxLeadFilter} onChange={e => setCxLeadFilter(e.target.value)} className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-slate-50">
+        <option>All CX Leads</option>
+        {cxLeads.map(c => <option key={c}>{c}</option>)}
+      </select>
+      {showClear && <button onClick={onClear} className="text-xs text-indigo-600 font-medium px-2 py-1.5">Clear</button>}
+    </div>
+  );
+}
+
+function GroupTable({ groups, columns, onRowClick, activeKey }) {
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left text-xs text-slate-500 border-b border-slate-200">
+              {columns.map(c => <th key={c.key} className={`px-3 py-2 ${c.className || ""}`}>{c.label}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {groups.map(g => (
+              <tr
+                key={g.name}
+                onClick={() => onRowClick && onRowClick(g.name)}
+                className={`border-b border-slate-100 ${onRowClick ? "cursor-pointer hover:bg-indigo-50" : ""} ${activeKey === g.name ? "bg-indigo-50" : ""}`}
+              >
+                {columns.map(c => (
+                  <td key={c.key} className={`px-3 py-2 whitespace-nowrap ${c.cellClassName || "text-slate-600"}`}>
+                    {c.render ? c.render(g) : g[c.key]}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ---------- Main app ----------
+function ChaserDashboard() {
+  const [data, setData] = useState(generateSampleData);
+  const [dataLabel, setDataLabel] = useState("Sample tblChaser data (250 rows)");
+  const [uploadError, setUploadError] = useState("");
+  const [today, setToday] = useState(TODAY);
+  const [activePage, setActivePage] = useState("Dashboard");
+
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [supplierFilter, setSupplierFilter] = useState("All");
+  const [customerFilter, setCustomerFilter] = useState("All");
+  const [cxLeadFilter, setCxLeadFilter] = useState("All");
+  const [wipCustomer, setWipCustomer] = useState(null);
+  const fileInputRef = useRef(null);
+
+  const suppliers = useMemo(() => [...new Set(data.map(r => r.supplier))].sort(), [data]);
+  const customers = useMemo(() => [...new Set(data.map(r => r.customer))].sort(), [data]);
+  const cxLeads = useMemo(() => [...new Set(data.map(r => r.cxLead))].sort(), [data]);
+
+  const overdueRows = useMemo(
+    () => data.filter(r => r.followUpDate && r.followUpDate < today).sort((a, b) => a.followUpDate - b.followUpDate),
+    [data, today]
+  );
+  const chaseTodayRows = useMemo(() => data.filter(r => r.chaseToday), [data]);
+
+  const statusCounts = useMemo(() => {
+    const counts = {};
+    STATUSES.forEach(s => (counts[s] = 0));
+    data.forEach(r => { if (counts[r.status] === undefined) counts[r.status] = 0; counts[r.status]++; });
+    return counts;
+  }, [data]);
+
+  const filtered = useMemo(() => {
+    return data.filter(r => {
+      if (statusFilter !== "All" && r.status !== statusFilter) return false;
+      if (supplierFilter !== "All" && r.supplier !== supplierFilter) return false;
+      if (customerFilter !== "All" && r.customer !== customerFilter) return false;
+      if (cxLeadFilter !== "All" && r.cxLead !== cxLeadFilter) return false;
+      if (search.trim()) {
+        const q = search.toLowerCase();
+        if (!r.workOrder.toLowerCase().includes(q) && !r.supplier.toLowerCase().includes(q) && !r.customer.toLowerCase().includes(q)) return false;
+      }
+      return true;
+    });
+  }, [data, statusFilter, supplierFilter, customerFilter, cxLeadFilter, search]);
+
+  const pieData = STATUSES.map(s => ({ name: s, value: statusCounts[s] || 0, color: STATUS_META[s].color })).filter(p => p.value > 0);
+
+  const filtersActive = statusFilter !== "All" || supplierFilter !== "All" || customerFilter !== "All" || cxLeadFilter !== "All" || !!search;
+  function clearFilters() {
+    setStatusFilter("All"); setSupplierFilter("All"); setCustomerFilter("All"); setCxLeadFilter("All"); setSearch("");
+  }
+  function handleStatCardClick(status) {
+    setStatusFilter(prev => (prev === status ? "All" : status));
+  }
+  function goFilterPage(page, setters) {
+    clearFilters();
+    Object.entries(setters).forEach(([k, v]) => {
+      if (k === "supplier") setSupplierFilter(v);
+      if (k === "customer") setCustomerFilter(v);
+    });
+    setActivePage(page);
+  }
+  function updateStatus(id, newStatus) {
+    setData(prev => prev.map(r => {
+      if (r.id !== id) return r;
+      return { ...r, status: newStatus, chaseToday: newStatus === "Chase Today" || newStatus === "Requested Chaser" };
+    }));
+  }
+
+  // Grouped summaries
+  const customerGroups = useMemo(() => customers.map(c => {
+    const rows = data.filter(r => r.customer === c);
+    return {
+      name: c,
+      total: rows.length,
+      chaseToday: rows.filter(r => r.status === "Chase Today").length,
+      requested: rows.filter(r => r.status === "Requested Chaser").length,
+      noChaser: rows.filter(r => r.status === "No Chaser Requested").length,
+      notRequired: rows.filter(r => r.status === "Chase Not Required").length,
+      overdue: rows.filter(r => r.followUpDate && r.followUpDate < today).length,
+    };
+  }).sort((a, b) => b.total - a.total), [data, customers, today]);
+
+  const supplierGroups = useMemo(() => suppliers.map(s => {
+    const rows = data.filter(r => r.supplier === s);
+    return {
+      name: s,
+      total: rows.length,
+      chaseToday: rows.filter(r => r.chaseToday).length,
+      overdue: rows.filter(r => r.followUpDate && r.followUpDate < today).length,
+      rfq: rows.filter(r => r.rfqRaised).length,
+      pur: rows.filter(r => r.purRaised).length,
+      ship: rows.filter(r => r.shipToSupplier).length,
+    };
+  }).sort((a, b) => b.total - a.total), [data, suppliers, today]);
+
+  const cxLeadChart = useMemo(() => cxLeads.map(c => ({ name: c, count: data.filter(r => r.cxLead === c).length })), [data, cxLeads]);
+  const supplierChart = useMemo(() => supplierGroups.slice(0, 8).map(g => ({ name: g.name, count: g.total })), [supplierGroups]);
+
+  const followUps = data.filter(r => r.followUpDate);
+  const avgDaysToFollowUp = followUps.length
+    ? Math.round(followUps.reduce((acc, r) => acc + daysBetween(r.followUpDate, today), 0) / followUps.length)
+    : 0;
+  const pct = n => data.length ? Math.round((n / data.length) * 100) : 0;
+
+  // Upload handling
+  function handleFileUpload(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadError("");
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const wb = XLSX.read(evt.target.result, { type: "array", cellDates: true });
+        const sheetName = wb.SheetNames.find(n => n.toLowerCase().includes("chaser")) || wb.SheetNames[0];
+        const json = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { defval: null });
+        if (!json.length) throw new Error("No rows found in that sheet.");
+        const parsed = parseSheetRows(json);
+        const recognised = Object.keys(json[0]).filter(k => HEADER_MAP[k.trim().toLowerCase()]);
+        if (recognised.length < 3) throw new Error("Couldn't recognise enough columns. Expected headers like Work Order, Supplier, Customer, Chaser Status, Follow Up Date, ETA...");
+        setData(parsed);
+        setDataLabel(`${file.name} (${parsed.length} rows, sheet "${sheetName}")`);
+        setToday(new Date());
+        clearFilters();
+      } catch (err) {
+        setUploadError(err.message || "Could not read that file.");
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+  function resetToSample() {
+    setData(generateSampleData());
+    setDataLabel("Sample tblChaser data (250 rows)");
+    setToday(TODAY);
+    setUploadError("");
+    clearFilters();
+  }
+
+  const statCards = [
+    { label: "Total WIP", value: data.length, status: "All", color: "text-slate-800", icon: "file-text" },
+    { label: "Chase Today", value: statusCounts["Chase Today"] || 0, status: "Chase Today", color: "text-rose-600", icon: "flag" },
+    { label: "Requested Chasers", value: statusCounts["Requested Chaser"] || 0, status: "Requested Chaser", color: "text-emerald-600", icon: "phone" },
+    { label: "No Chaser Requested", value: statusCounts["No Chaser Requested"] || 0, status: "No Chaser Requested", color: "text-orange-600", icon: "x" },
+    { label: "Chase Not Required", value: statusCounts["Chase Not Required"] || 0, status: "Chase Not Required", color: "text-violet-600", icon: "x" },
+    { label: "Overdue Follow Ups", value: overdueRows.length, status: "Overdue", color: "text-rose-600", icon: "bell" },
+  ];
+
+  const filterBarProps = {
+    search, setSearch, statusFilter, setStatusFilter, supplierFilter, setSupplierFilter,
+    customerFilter, setCustomerFilter, cxLeadFilter, setCxLeadFilter, suppliers, customers, cxLeads,
+    onClear: clearFilters, showClear: filtersActive,
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-100 text-slate-800 flex">
+      {/* Sidebar */}
+      <aside className="static w-64 bg-white border-r border-slate-200 flex flex-col shrink-0 min-h-screen">
+        <div className="h-16 flex items-center gap-2 px-5 border-b border-slate-200">
+          <div className="w-8 h-8 rounded-lg bg-indigo-700 flex items-center justify-center text-white font-bold text-sm">CW</div>
+          <span className="font-bold text-lg text-slate-800">Chaser WIP</span>
+        </div>
+        <nav className="p-3 space-y-1 flex-1 overflow-y-auto">
+          {PAGES.map(label => {
+            const active = activePage === label;
+            return (
+              <button
+                key={label}
+                onClick={() => setActivePage(label)}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition
+                  ${active ? "bg-indigo-50 text-indigo-700" : "text-slate-600 hover:bg-slate-50"}`}
+              >
+                <Icon name={NAV_ICONS[label]} size={17} />
+                {label}
+              </button>
+            );
+          })}
+        </nav>
+        <div className="p-3 border-t border-slate-200">
+          <button onClick={() => fileInputRef.current?.click()} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-indigo-700 text-white hover:bg-indigo-800">
+            <Icon name="upload" size={15} /> Upload tblChaser export
+          </button>
+          <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" onChange={handleFileUpload} className="hidden" />
+          {!dataLabel.startsWith("Sample") && (
+            <button onClick={resetToSample} className="w-full text-xs text-slate-400 hover:text-indigo-600 mt-2">Reset to sample data</button>
+          )}
+        </div>
+      </aside>
+
+      {/* Main */}
+      <div className="flex-1 min-w-0">
+        <header className="h-16 bg-indigo-900 flex items-center gap-3 px-6 sticky top-0 z-20">
+          <h2 className="text-white font-semibold">{activePage}</h2>
+          <div className="flex items-center gap-2 bg-white/10 rounded-lg px-3 py-2 flex-1 max-w-md ml-4">
+            <Icon name="search" size={16} className="text-indigo-200" />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search work order, supplier, customer..." className="bg-transparent text-white placeholder-indigo-200 outline-none text-sm flex-1" />
+          </div>
+          <div className="flex-1" />
+          <div className="flex items-center gap-3 text-indigo-100">
+            <Icon name="bell" size={18} />
+            <Icon name="help-circle" size={18} />
+            <div className="w-8 h-8 rounded-full bg-rose-400 text-white flex items-center justify-center text-sm font-semibold">JW</div>
+          </div>
+        </header>
+
+        <main className="p-6 space-y-6">
+          {uploadError && (
+            <div className="flex items-start gap-2 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-lg p-3">
+              <Icon name="alert-circle" size={16} className="mt-0.5 shrink-0" />
+              <div><p className="font-medium">Couldn't load that file</p><p className="text-rose-600">{uploadError}</p></div>
+            </div>
+          )}
+          {!dataLabel.startsWith("Sample") && !uploadError && (
+            <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm rounded-lg p-3">
+              <Icon name="check-circle" size={16} /><span>Loaded your export — dashboard now reflects {data.length} rows from tblChaser.</span>
+            </div>
+          )}
+
+          {/* ---------- Dashboard ---------- */}
+          {activePage === "Dashboard" && (
+            <React.Fragment>
+              <div>
+                <h1 className="text-2xl font-bold text-slate-800">Welcome back, Jess 👋</h1>
+                <p className="text-sm text-slate-500">Here's what's happening across all WIPs.</p>
+              </div>
+              <div className="grid grid-cols-6 gap-3">
+                {statCards.map(({ label, value, status, color, icon }) => (
+                  <button key={label} onClick={() => handleStatCardClick(status)}
+                    className={`text-left bg-white rounded-xl border p-4 transition shadow-sm hover:shadow-md ${statusFilter === status ? "border-indigo-400 ring-2 ring-indigo-100" : "border-slate-200"}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-medium text-slate-500">{label}</span>
+                      <Icon name={icon} size={15} className={color} />
+                    </div>
+                    <div className={`text-2xl font-bold ${color}`}>{value}</div>
+                  </button>
+                ))}
+              </div>
+              <div className="grid grid-cols-3 gap-6">
+                <div className="col-span-2 space-y-3">
+                  <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-3">
+                    <FilterBar {...filterBarProps} />
+                  </div>
+                  <PaginatedTable rows={filtered} today={today} onStatusChange={updateStatus} />
+                </div>
+                <div className="space-y-6">
+                  <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+                    <h3 className="font-semibold text-slate-800 mb-2">WIP by Status</h3>
+                    <DonutChart data={pieData} total={data.length} onSliceClick={handleStatCardClick} />
+                    <div className="grid grid-cols-2 gap-2 mt-3 text-xs">
+                      {STATUSES.map(name => (
+                        <button key={name} onClick={() => handleStatCardClick(name)} className="flex items-center gap-2 text-left hover:bg-slate-50 rounded p-1">
+                          <span className="w-2.5 h-2.5 rounded-full" style={{ background: STATUS_META[name].color }} />
+                          <span className="text-slate-600">{name}</span>
+                          <span className="ml-auto font-semibold text-slate-700">{statusCounts[name] || 0}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+                    <h3 className="font-semibold text-slate-800 mb-3">Customer WIP Summary</h3>
+                    <div className="space-y-2">
+                      {customerGroups.map(c => (
+                        <button key={c.name} onClick={() => { setCustomerFilter(c.name); setStatusFilter("All"); }}
+                          className={`w-full flex items-center justify-between text-sm rounded-lg px-3 py-2 transition ${customerFilter === c.name ? "bg-indigo-50 border border-indigo-200" : "hover:bg-slate-50 border border-transparent"}`}>
+                          <span className="font-medium text-slate-700">{c.name}</span>
+                          <span className="flex items-center gap-3 text-xs text-slate-500">
+                            <span>Total <b className="text-slate-700">{c.total}</b></span>
+                            <span className="text-rose-500">Chase {c.chaseToday}</span>
+                            <span className="text-orange-500">No Req {c.noChaser}</span>
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </React.Fragment>
+          )}
+
+          {/* ---------- Chaser WIP (All) ---------- */}
+          {activePage === "Chaser WIP (All)" && (
+            <React.Fragment>
+              <div>
+                <h1 className="text-2xl font-bold text-slate-800">Chaser WIP (All)</h1>
+                <p className="text-sm text-slate-500">{filtered.length} of {data.length} work orders match the current filters.</p>
+              </div>
+              <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-3">
+                <FilterBar {...filterBarProps} />
+              </div>
+              <PaginatedTable rows={filtered} today={today} onStatusChange={updateStatus} defaultPerPage={25} />
+            </React.Fragment>
+          )}
+
+          {/* ---------- Chase Today ---------- */}
+          {activePage === "Chase Today" && (
+            <React.Fragment>
+              <div>
+                <h1 className="text-2xl font-bold text-slate-800">Chase Today</h1>
+                <p className="text-sm text-slate-500">{chaseTodayRows.length} work orders flagged for chasing today (status: Chase Today or Requested Chaser).</p>
+              </div>
+              <PaginatedTable rows={chaseTodayRows} today={today} onStatusChange={updateStatus} defaultPerPage={25} emptyText="Nothing to chase today 🎉" />
+            </React.Fragment>
+          )}
+
+          {/* ---------- Overdue Follow Ups ---------- */}
+          {activePage === "Overdue Follow Ups" && (
+            <React.Fragment>
+              <div>
+                <h1 className="text-2xl font-bold text-slate-800">Overdue Follow Ups</h1>
+                <p className="text-sm text-slate-500">{overdueRows.length} work orders have a follow-up date before {fmtDate(today)}, sorted oldest first.</p>
+              </div>
+              <PaginatedTable rows={overdueRows} today={today} onStatusChange={updateStatus} defaultPerPage={25} emptyText="No overdue follow-ups — you're all caught up." />
+            </React.Fragment>
+          )}
+
+          {/* ---------- Supplier Chases ---------- */}
+          {activePage === "Supplier Chases" && (
+            <React.Fragment>
+              <div>
+                <h1 className="text-2xl font-bold text-slate-800">Supplier Chases</h1>
+                <p className="text-sm text-slate-500">Click a supplier to open their work orders in Chaser WIP (All).</p>
+              </div>
+              <GroupTable
+                groups={supplierGroups}
+                onRowClick={(name) => goFilterPage("Chaser WIP (All)", { supplier: name })}
+                columns={[
+                  { key: "name", label: "Supplier", cellClassName: "font-medium text-slate-700" },
+                  { key: "total", label: "Total WIP" },
+                  { key: "chaseToday", label: "Chase Today", cellClassName: "text-rose-600 font-medium" },
+                  { key: "overdue", label: "Overdue", cellClassName: "text-orange-600 font-medium" },
+                  { key: "rfq", label: "RFQ Raised" },
+                  { key: "pur", label: "PUR Raised" },
+                  { key: "ship", label: "Ship to Supplier" },
+                ]}
+              />
+            </React.Fragment>
+          )}
+
+          {/* ---------- Chaser Performance ---------- */}
+          {activePage === "Chaser Performance" && (
+            <React.Fragment>
+              <div>
+                <h1 className="text-2xl font-bold text-slate-800">Chaser Performance</h1>
+                <p className="text-sm text-slate-500">Snapshot of current WIP load and chase progress.</p>
+              </div>
+              <div className="grid grid-cols-4 gap-3">
+                <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+                  <span className="text-xs text-slate-500">Avg days to follow-up</span>
+                  <div className="text-2xl font-bold text-slate-800">{avgDaysToFollowUp}d</div>
+                </div>
+                <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+                  <span className="text-xs text-slate-500">Overdue rate</span>
+                  <div className="text-2xl font-bold text-rose-600">{pct(overdueRows.length)}%</div>
+                </div>
+                <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+                  <span className="text-xs text-slate-500">RFQ raised</span>
+                  <div className="text-2xl font-bold text-blue-600">{pct(data.filter(r => r.rfqRaised).length)}%</div>
+                </div>
+                <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+                  <span className="text-xs text-slate-500">PUR raised</span>
+                  <div className="text-2xl font-bold text-teal-600">{pct(data.filter(r => r.purRaised).length)}%</div>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-6">
+                <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+                  <h3 className="font-semibold text-slate-800 mb-3">WIP by CX Lead</h3>
+                  <HBarChart data={cxLeadChart} color="#4f46e5" />
+                </div>
+                <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+                  <h3 className="font-semibold text-slate-800 mb-3">Top Suppliers by WIP</h3>
+                  <HBarChart data={supplierChart} color="#0d9488" />
+                </div>
+              </div>
+              <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+                <h3 className="font-semibold text-slate-800 mb-3">Status mix</h3>
+                <div className="space-y-3">
+                  {STATUSES.map(s => (
+                    <BarStat key={s} label={s} value={statusCounts[s] || 0} max={data.length} color={STATUS_META[s].color} />
+                  ))}
+                </div>
+              </div>
+            </React.Fragment>
+          )}
+
+          {/* ---------- Customer WIPs ---------- */}
+          {activePage === "Customer WIPs" && (
+            <React.Fragment>
+              <div>
+                <h1 className="text-2xl font-bold text-slate-800">Customer WIPs</h1>
+                <p className="text-sm text-slate-500">Click a customer to view and update the status of their work orders.</p>
+              </div>
+              <GroupTable
+                groups={customerGroups}
+                activeKey={wipCustomer}
+                onRowClick={(name) => setWipCustomer(prev => (prev === name ? null : name))}
+                columns={[
+                  { key: "name", label: "Customer", cellClassName: "font-medium text-slate-700" },
+                  { key: "total", label: "Total WIP" },
+                  { key: "chaseToday", label: "Chase Today", cellClassName: "text-rose-600 font-medium" },
+                  { key: "requested", label: "Requested Chaser", cellClassName: "text-emerald-600 font-medium" },
+                  { key: "noChaser", label: "No Chaser Req.", cellClassName: "text-orange-600 font-medium" },
+                  { key: "notRequired", label: "Not Required", cellClassName: "text-violet-600 font-medium" },
+                  { key: "overdue", label: "Overdue", cellClassName: "text-rose-600 font-medium" },
+                ]}
+              />
+              {wipCustomer && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold text-slate-800">Work orders for {wipCustomer}</h3>
+                    <button onClick={() => setWipCustomer(null)} className="text-xs text-indigo-600 font-medium">Close</button>
+                  </div>
+                  <EditableWipTable
+                    rows={data.filter(r => r.customer === wipCustomer)}
+                    today={today}
+                    onStatusChange={updateStatus}
+                    defaultPerPage={10}
+                  />
+                </div>
+              )}
+            </React.Fragment>
+          )}
+
+          {/* ---------- Supplier Management ---------- */}
+          {activePage === "Supplier Management" && (
+            <React.Fragment>
+              <div>
+                <h1 className="text-2xl font-bold text-slate-800">Supplier Management</h1>
+                <p className="text-sm text-slate-500">Open WIP and chase flags by supplier. Click a row to view their work orders.</p>
+              </div>
+              <GroupTable
+                groups={supplierGroups}
+                onRowClick={(name) => goFilterPage("Chaser WIP (All)", { supplier: name })}
+                columns={[
+                  { key: "name", label: "Supplier", cellClassName: "font-medium text-slate-700" },
+                  { key: "total", label: "Total WIP" },
+                  { key: "chaseToday", label: "Chase Today", cellClassName: "text-rose-600 font-medium" },
+                  { key: "overdue", label: "Overdue Follow Ups", cellClassName: "text-orange-600 font-medium" },
+                  { key: "rfq", label: "RFQ %", render: g => `${pct(g.rfq)}%` },
+                  { key: "pur", label: "PUR %", render: g => `${pct(g.pur)}%` },
+                  { key: "ship", label: "Ship %", render: g => `${pct(g.ship)}%` },
+                ]}
+              />
+            </React.Fragment>
+          )}
+
+          {/* ---------- Settings ---------- */}
+          {activePage === "Settings" && (
+            <React.Fragment>
+              <div>
+                <h1 className="text-2xl font-bold text-slate-800">Settings</h1>
+                <p className="text-sm text-slate-500">Data source and reference info for this dashboard.</p>
+              </div>
+              <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Current data source</span>
+                  <span className="font-medium text-slate-800">{dataLabel}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">"Today" used for overdue checks</span>
+                  <span className="font-medium text-slate-800">{fmtDate(today)}</span>
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-indigo-700 text-white hover:bg-indigo-800">
+                    <Icon name="upload" size={15} /> Upload tblChaser export
+                  </button>
+                  {!dataLabel.startsWith("Sample") && (
+                    <button onClick={resetToSample} className="px-3 py-2 rounded-lg text-sm font-medium border border-slate-200 text-slate-600 hover:bg-slate-50">
+                      Reset to sample data
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 text-xs text-slate-500 leading-relaxed">
+                <h3 className="font-semibold text-slate-800 mb-2 text-sm">Expected export columns</h3>
+                <p className="mb-2">Upload an export of tblChaser with these headers (any order, case-insensitive):</p>
+                <p className="font-mono text-slate-600">
+                  Work Order, Supplier, Customer, CX Lead, Chaser Status, Chase Today, Next Action,
+                  Follow Up Date, ETA, RFQ Raised, PUR Raised, Ship To Supplier, Source Query, Last Chased, Booked Out
+                </p>
+              </div>
+            </React.Fragment>
+          )}
+        </main>
+      </div>
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<ChaserDashboard />);
+</script>
+</body>
+</html>
